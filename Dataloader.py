@@ -114,6 +114,8 @@ class Loader:
             #print(type(candidata_sentence_set))
             for i in candidata_sentence_set:
                 sentences.append(i[0])
+            while len(sentences) < 5:
+                sentences.append(sentences[0])
             #indices = list(combinations(sentences, 2))
             indices = list(combinations(sentences, 2))
 

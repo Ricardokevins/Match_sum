@@ -40,7 +40,7 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
         train_candi = train_candi.cuda()
     dataset = torch.utils.data.TensorDataset(train_data, train_candi,train_label)
     train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
-    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0)
+    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0.001)
     loss_func=Loss_func(1)
     pbar = ProgressBar(n_total=len(train_iter), desc='Training')
     for epoch in range(num_epochs):
