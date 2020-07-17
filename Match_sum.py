@@ -23,7 +23,7 @@ label_path="train.txt.tgt"
 base_path="../../../data/cnn_dailymail/"
 
 
-def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
+def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
     loader=Loader("bert")
     train_data,train_label,train_candi=loader.read_data(base_path+document_path,base_path+label_path,300)
     print("\n")
@@ -40,8 +40,8 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
         train_candi = train_candi.cuda()
     dataset = torch.utils.data.TensorDataset(train_data, train_candi,train_label)
     train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
-    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0.001)
-    loss_func=Loss_func(1)
+    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0)
+    loss_func=Loss_func(0.01)
     pbar = ProgressBar(n_total=len(train_iter), desc='Training')
     for epoch in range(num_epochs):
         index=0
@@ -57,7 +57,7 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
             loss=loss_func.get_loss(output['score'],output['summary_score'])
             loss.backward()
             optimizer.step()
-            index+=1
             pbar(index, {'Loss': loss.mean().data})
-        print("\nTraining Finished")
+            index+=1
+        print("\n","Epoch: ",epoch," Training Finished")
 Train()
