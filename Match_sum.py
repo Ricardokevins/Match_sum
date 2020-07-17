@@ -31,7 +31,8 @@ def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
     print(train_label.size())
     print(train_candi.size())
     Model=MatchSum(candidate_num=10)
-    
+
+
     if USE_CUDA:
         print("using GPU")
         Model = Model.cuda()
