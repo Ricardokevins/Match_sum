@@ -25,7 +25,7 @@ base_path="../../../data/cnn_dailymail/"
 
 def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
     loader=Loader("bert")
-    train_data,train_label,train_candi=loader.read_data(base_path+document_path,base_path+label_path,300)
+    train_data,train_label,train_candi=loader.read_data(base_path+document_path,base_path+label_path,"candi.txt",pairs_num=300,max_len=128,init_flag=False)
     print("\n")
     print(train_data.size())
     print(train_label.size())
@@ -40,11 +40,12 @@ def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
         train_candi = train_candi.cuda()
     dataset = torch.utils.data.TensorDataset(train_data, train_candi,train_label)
     train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
-    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0)
+    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0.001)
     loss_func=Loss_func(0.01)
     pbar = ProgressBar(n_total=len(train_iter), desc='Training')
     for epoch in range(num_epochs):
         index=0
+        total_loss=0
         for x,y,z in train_iter:
             #print(x)
             #print("\n")
@@ -57,7 +58,8 @@ def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
             loss=loss_func.get_loss(output['score'],output['summary_score'])
             loss.backward()
             optimizer.step()
-            pbar(index, {'Loss': loss.mean().data})
+            total_loss+=loss.mean().data
+            pbar(index, {'Loss': total_loss/index})
             index+=1
         print("\n","Epoch: ",epoch," Training Finished")
 Train()

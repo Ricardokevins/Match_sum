@@ -80,13 +80,56 @@ class Loader:
             data_list.append(x)
         return data_list
 
-    def read_data(self,path1,path2,pairs_num,max_len=128):
+    def gen_data(self,path1,path2,pairs_num):
+        fo = open(path1, "r", encoding='gb18030', errors='ignore')
+        f = open(path2,'w')
+        number=0
+        print("----Start to generate candi data----")
+        for i in range(pairs_num):
+            line1 = fo.readline()
+            if line1==None:
+                continue
+            do = self.get_document(line1)
+            sentence={}
+            document = " ".join(do)
+            for o in do:
+                if o!= None:
+                    try:
+                        sentence[o]=self.get_score(o,document)
+                    except Exception as e:
+                        pass
+                    continue
+            
+            sort_sentences = sorted(sentence.items(), key=lambda x: x[1],reverse = True)
+            
+            candidata_sentence_set=sort_sentences[:5]
+            sentences=[]
+            for i in candidata_sentence_set:
+                sentences.append(i[0])
+            while len(sentences) < 5:
+                sentences.append(sentences[0])
+            indices = list(combinations(sentences, 2))
+
+            candidata=[]
+            for i in indices:
+                candidata.append(" ".join(i))             
+            number+=len(candidata)
+            for j in candidata:
+                f.write(j)
+                f.write('\n')
+        f.close()
+        print("----gen finished with ",number,"----")
+        
+    def read_data(self,path1,path2,path3,pairs_num,max_len=128,init_flag=True):
         print("----start Read train data----")
         fo = open(path1, "r", encoding='gb18030', errors='ignore')
         fl = open(path2, "r", encoding='gb18030', errors='ignore')
 
         candi_list=[]
         pbar = ProgressBar(n_total=pairs_num, desc='Loading')
+        if init_flag:
+            self.gen_data(path1,path3,pairs_num)
+        fc=open(path3, "r")
         for i in range(pairs_num):
             pbar(i, {'current': i})
             line1 = fo.readline()
@@ -96,68 +139,31 @@ class Loader:
             #line1="A ##SENT## B ##SENT## C ##SENT## D ##SENT## E ##SENT## F"
             do = self.get_document(line1)
             la = self.get_labels(line2)
-            sentences={}
+        
             document = " ".join(do)
             la = " ".join(la)
-            for o in do:
-                if o!= None:
-                    try:
-                        sentences[o]=self.get_score(o,document)
-                    except Exception as e:
-                        pass
-                    continue
-            sort_sentences = sorted(sentences.items(), key=lambda x: x[1],reverse = True)
-
-            candidata_sentence_set=sort_sentences[:5]
-            sentences=[]
-            #print(candidata_sentence_set)
-            #print(type(candidata_sentence_set))
-            for i in candidata_sentence_set:
-                sentences.append(i[0])
-            while len(sentences) < 5:
-                sentences.append(sentences[0])
-            #indices = list(combinations(sentences, 2))
-            indices = list(combinations(sentences, 2))
-
-            candidata=[]
-            #print(sentences)
-            #print(indices)
-            for i in indices:
-                #print(type(i))
-                #print(len(i))
-                candidata.append(" ".join(i))
-            #print(candidata[0])
-            #print(type(candidata[0]))
+            
             candidata_data=[]
-            for i in candidata:
-                temp=(tokenizer.encode(i, add_special_tokens=False))
-                if len(temp)==0:
-                    print("temp: ",i)
-                candidata_data.append(tokenizer.encode(i, add_special_tokens=False))
+            for i in range(10):
+                temp=fc.readline()
+                temp = temp.replace("\n", "")
+                candidata_data.append(tokenizer.encode(temp, add_special_tokens=False))
             #print(len(candidata_data))
             #print(candidata_data[0])
-            if len(candidata_data)==0:
-                print("Hit !!!!!!!!!!!!!!!!!!",len(indices),len(sentences),len(candidata_sentence_set),len(sort_sentences),len(do))
-
+            
             self.train_data['text'].append(tokenizer.encode(document, add_special_tokens=False))
             self.train_data['label'].append(tokenizer.encode(la, add_special_tokens=False))
             self.train_data['candi'].append(candidata_data)
 
         data_list=self.pad_and_add_token(self.train_data['text'],max_len)
         label_list=self.pad_and_add_token(self.train_data['label'],max_len)
-        print("1",len( self.train_data['candi']))
+        
         pos=0
         for i in self.train_data['candi']:
             pos+=1
             temp=self.pad_and_add_token(i,max_len)
-            if len(temp)==0:
-                print(pos,i)
             candi_list.append(temp)
-        print("2",len(candi_list))
-        print("3",len(candi_list[0]))
-        for i in candi_list:
-            if len(i)!=10:
-                print(i)
+    
         train_data = torch.tensor(data_list)
         train_label = torch.tensor(label_list)
         train_candi = torch.tensor(candi_list)
