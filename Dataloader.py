@@ -79,7 +79,18 @@ class Loader:
                 x.append(0)
             data_list.append(x)
         return data_list
-
+    def check_data(self,path1,pair_num):
+        fo = open(path1, "r", encoding='gb18030', errors='ignore')
+        print("Start to check")
+        index=0
+        for i in  range(pair_num*10):
+            line1=fo.readline()
+            line1 = line1.replace("\n", "")
+            if len(line1)==0:
+                print("hit error at ",i)
+            index+=1
+        print(index,"sentence is completed")
+        fo.close()
     def gen_data(self,path1,path2,pairs_num):
         fo = open(path1, "r", encoding='gb18030', errors='ignore')
         f = open(path2,'w')
@@ -87,6 +98,7 @@ class Loader:
         print("----Start to generate candi data----")
         for i in range(pairs_num):
             line1 = fo.readline()
+            line1=line1.strip()
             if line1==None:
                 continue
             do = self.get_document(line1)
@@ -109,7 +121,7 @@ class Loader:
             while len(sentences) < 5:
                 sentences.append(sentences[0])
             indices = list(combinations(sentences, 2))
-
+            
             candidata=[]
             for i in indices:
                 candidata.append(" ".join(i))             
@@ -129,7 +141,10 @@ class Loader:
         pbar = ProgressBar(n_total=pairs_num, desc='Loading')
         if init_flag:
             self.gen_data(path1,path3,pairs_num)
-        fc=open(path3, "r")
+        self.check_data(path3,pairs_num)
+        fc = open(path3, "r", encoding='gb18030', errors='ignore')
+        origin_labels=[]
+        origin_candi=[]
         for i in range(pairs_num):
             pbar(i, {'current': i})
             line1 = fo.readline()
@@ -142,15 +157,19 @@ class Loader:
         
             document = " ".join(do)
             la = " ".join(la)
-            
+            origin_labels.append(la)
             candidata_data=[]
-            for i in range(10):
+            temp_candi=[]
+            for j in range(10):
                 temp=fc.readline()
                 temp = temp.replace("\n", "")
+                temp_candi.append(temp)
+                if len(temp)==0:
+                    print("Hit bad Trap at",i*10+j)
                 candidata_data.append(tokenizer.encode(temp, add_special_tokens=False))
             #print(len(candidata_data))
             #print(candidata_data[0])
-            
+            origin_candi.append(temp_candi)
             self.train_data['text'].append(tokenizer.encode(document, add_special_tokens=False))
             self.train_data['label'].append(tokenizer.encode(la, add_special_tokens=False))
             self.train_data['candi'].append(candidata_data)
@@ -167,6 +186,6 @@ class Loader:
         train_data = torch.tensor(data_list)
         train_label = torch.tensor(label_list)
         train_candi = torch.tensor(candi_list)
-        return train_data,train_label,train_candi
+        return train_data,train_label,train_candi,origin_labels,origin_candi
 
 
