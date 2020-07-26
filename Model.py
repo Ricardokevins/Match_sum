@@ -69,12 +69,15 @@ class MatchSum(nn.Module):
         candidate_id = candidate_id.view(-1, candidate_id.size(-1))
         input_mask = ~(candidate_id == pad_id)
         out = self.encoder(candidate_id, attention_mask=input_mask)[0]
+        print(out[:,0,:].size())
+        exit()
         candidate_emb = out[:, 0, :].view(batch_size, candidate_num,
                                           self.hidden_size)  # [batch_size, candidate_num, hidden_size]
         assert candidate_emb.size() == (batch_size, candidate_num, self.hidden_size)
 
         # get candidate score
         doc_emb = doc_emb.unsqueeze(1).expand_as(candidate_emb)
+    
         score = torch.cosine_similarity(candidate_emb, doc_emb, dim=-1)  # [batch_size, candidate_num]
         assert score.size() == (batch_size, candidate_num)
 

@@ -23,9 +23,9 @@ label_path="train.txt.tgt"
 base_path="../../../data/cnn_dailymail/"
 
 
-def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
+def Train(USE_CUDA=True,num_epochs=2,batch_size=1):
     loader=Loader("bert")
-    train_data,train_label,train_candi,origin_labels,origin_candi=loader.read_data(base_path+document_path,base_path+label_path,"candi.txt",pairs_num=300,max_len=256,init_flag=True)
+    train_data,train_label,train_candi,origin_labels,origin_candi=loader.read_data(base_path+document_path,base_path+label_path,"candi.txt",pairs_num=300,max_len=256,init_flag=False)
     print("\n")
     print(train_data.size())
     print(train_label.size())
@@ -43,8 +43,8 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
         train_label = train_label.cuda()
         train_candi = train_candi.cuda()
     dataset = torch.utils.data.TensorDataset(train_data, train_candi,train_label)
-    train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
-    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0)
+    train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=False)
+    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0.0001)
     loss_func=Loss_func(0.001)
     pbar = ProgressBar(n_total=len(train_iter), desc='Training')
     for epoch in range(num_epochs):
@@ -58,6 +58,11 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
             #print(z)
             optimizer.zero_grad()
             output=Model(x,y,z)
+            if index<1 and epoch==0:
+                print(x)
+                print(y)
+                print(z)
+                print(output)
             #print(output)
             loss=loss_func.get_loss(output['score'],output['summary_score'])
             loss.backward()
@@ -67,6 +72,8 @@ def Train(USE_CUDA=True,num_epochs=3,batch_size=1):
             index+=1
         print("\n","Epoch: ",epoch," Training Finished")
     eval(Model,train_data,train_label,train_candi,origin_labels,origin_candi,batch_size)    
+
+
 from rouge import Rouge
 def eval(model,train_data,train_label,train_candi,origin_labels,origin_candi,batch_size,USE_CUDA=True):
     model.eval()
@@ -86,15 +93,15 @@ def eval(model,train_data,train_label,train_candi,origin_labels,origin_candi,bat
     rougeL=0
     for x,y,z in train_iter:
         output=model(x,y,z)
-        score=output["score"].detach().cpu().numpy().tolist()
+        score=output["score"].detach().cpu().numpy().tolist()[0]
         i=score.index(max(score))
+        if pos<1:
+            print('\n',output)
+            print(x)
+         #   print(len(score))
+        #    print("choose",i)
         summary=origin_candi[pos][i]
         label=origin_labels[pos]
-        if len(summary)==0:
-            for i in origin_candi[pos]:
-                print("Hit:",i[:20])
-            print(len(summary))
-
         rouge_score = eval_tool.get_scores(summary, label)
         rouge1+=rouge_score[0]["rouge-1"]['r']
         rouge2+=rouge_score[0]["rouge-2"]['r']
