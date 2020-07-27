@@ -21,9 +21,9 @@ from Model import Loss_func
 document_path="train.txt.src"
 label_path="train.txt.tgt"
 base_path="../../../data/cnn_dailymail/"
+import random
 
-
-def Train(USE_CUDA=True,num_epochs=2,batch_size=1):
+def Train(USE_CUDA=True,num_epochs=5,batch_size=1):
     loader=Loader("bert")
     train_data,train_label,train_candi,origin_labels,origin_candi=loader.read_data(base_path+document_path,base_path+label_path,"candi.txt",pairs_num=300,max_len=256,init_flag=False)
     print("\n")
@@ -44,12 +44,14 @@ def Train(USE_CUDA=True,num_epochs=2,batch_size=1):
         train_candi = train_candi.cuda()
     dataset = torch.utils.data.TensorDataset(train_data, train_candi,train_label)
     train_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=False)
-    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=0.0001)
-    loss_func=Loss_func(0.001)
+    optimizer = Adam(filter(lambda p: p.requires_grad, Model.parameters()), lr=2e-5)
+    loss_func=Loss_func(0.01)
     pbar = ProgressBar(n_total=len(train_iter), desc='Training')
     for epoch in range(num_epochs):
         index=0
         total_loss=0
+        print("----Start",epoch,"----")
+        test=random.randint(0, 250)
         for x,y,z in train_iter:
             #print(x)
             #print("\n")
@@ -58,19 +60,17 @@ def Train(USE_CUDA=True,num_epochs=2,batch_size=1):
             #print(z)
             optimizer.zero_grad()
             output=Model(x,y,z)
-            if index<1 and epoch==0:
-                print(x)
-                print(y)
-                print(z)
-                print(output)
+            if index==test:
+                print('\n',test,output)
             #print(output)
             loss=loss_func.get_loss(output['score'],output['summary_score'])
             loss.backward()
             optimizer.step()
             total_loss+=loss.mean().data
-            pbar(index, {'Loss': total_loss/index})
+            #pbar(index, {'Loss': total_loss/index})
             index+=1
-        print("\n","Epoch: ",epoch," Training Finished")
+        print("Epoch: ",epoch," Loss: ",total_loss/index)
+        eval(Model,train_data,train_label,train_candi,origin_labels,origin_candi,batch_size)
     eval(Model,train_data,train_label,train_candi,origin_labels,origin_candi,batch_size)    
 
 
@@ -95,9 +95,9 @@ def eval(model,train_data,train_label,train_candi,origin_labels,origin_candi,bat
         output=model(x,y,z)
         score=output["score"].detach().cpu().numpy().tolist()[0]
         i=score.index(max(score))
-        if pos<1:
-            print('\n',output)
-            print(x)
+        test=random.randint(0, 200)
+        if pos==test:
+            print('\n',pos,output)
          #   print(len(score))
         #    print("choose",i)
         summary=origin_candi[pos][i]
@@ -106,9 +106,9 @@ def eval(model,train_data,train_label,train_candi,origin_labels,origin_candi,bat
         rouge1+=rouge_score[0]["rouge-1"]['r']
         rouge2+=rouge_score[0]["rouge-2"]['r']
         rougeL+=rouge_score[0]["rouge-l"]['r']
-        pbar(pos, {'index':pos })
+        #pbar(pos, {'index':pos })
         pos+=1
-    print("ROUGE1 Recall ",rouge1/pos)
+    print("\nROUGE1 Recall ",rouge1/pos)
     print("ROUGE2 Recall ",rouge2/pos)
     print("ROUGEL Recall ",rougeL/pos)
 
